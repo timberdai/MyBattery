@@ -22,6 +22,7 @@ public struct IORegBattery: Equatable {
     public let notChargingReason: Int?
     public let isCharging: Bool?
     public let systemPowerInMW: Int?
+    public let systemLoadMW: Int?
 
     public init(
         cycleCount: Int? = nil,
@@ -38,7 +39,8 @@ public struct IORegBattery: Equatable {
         adapterProtocol: String? = nil,
         notChargingReason: Int? = nil,
         isCharging: Bool? = nil,
-        systemPowerInMW: Int? = nil
+        systemPowerInMW: Int? = nil,
+        systemLoadMW: Int? = nil
     ) {
         self.cycleCount = cycleCount
         self.designCapacity = designCapacity
@@ -55,6 +57,7 @@ public struct IORegBattery: Equatable {
         self.notChargingReason = notChargingReason
         self.isCharging = isCharging
         self.systemPowerInMW = systemPowerInMW
+        self.systemLoadMW = systemLoadMW
     }
 }
 
@@ -79,6 +82,7 @@ public func parseIORegBattery(_ raw: String) -> IORegBattery {
     let notChargingReason = firstMatch(in: raw, pattern: "\"NotChargingReason\"\\s*=\\s*([0-9]+)").flatMap { Int($0) }
     let isChg = firstMatch(in: raw, pattern: "\"IsCharging\"\\s*=\\s*(Yes|No)").map { $0 == "Yes" }
     let sysPower = firstMatch(in: raw, pattern: "\"SystemPowerIn\"\\s*=\\s*([0-9]+)").flatMap { Int($0) }
+    let sysLoad = firstMatch(in: raw, pattern: "\"SystemLoad\"\\s*=\\s*([0-9]+)").flatMap { Int($0) }
 
     let maxCap = intVal("AppleRawMaxCapacity") ?? intVal("FullChargeCapacity")
     let curCap = intVal("AppleRawCurrentCapacity") ?? intVal("RemainingCapacity")
@@ -98,6 +102,7 @@ public func parseIORegBattery(_ raw: String) -> IORegBattery {
         adapterProtocol: proto,
         notChargingReason: notChargingReason,
         isCharging: isChg,
-        systemPowerInMW: sysPower
+        systemPowerInMW: sysPower,
+        systemLoadMW: sysLoad
     )
 }

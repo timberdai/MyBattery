@@ -183,11 +183,45 @@ final class App: NSObject, NSApplicationDelegate {
         let pct = snap.reading.percent
         let isChg = snap.reading.state == .charging
 
-        // --- 1. 核心电量与状态 ---
-        let pctValStr = pct.map { "\($0)%" } ?? "不可用"
-        let pctColor: NSColor = plugged ? .systemGreen : (pct ?? 100 <= 20 ? .systemRed : .labelColor)
-        addKeyValueItem(menu, key: "电池电量", value: pctValStr, valueColor: pctColor, isBold: true)
+        // --- 0. CodexBar 风格电量卡片与微型进度条 ---
+        if let p = pct {
+            let isBypass = plugged && (!isChg && (io.notChargingReason == 16777216 || p == 80))
+            let badgeText: String = {
+                if plugged {
+                    if isChg { return "⚡️ 充电中" }
+                    else if isBypass { return "外接供电 · 旁路保护" }
+                    else { return "外接电源" }
+                } else {
+                    return "🔋 电池供电"
+                }
+            }()
+            let pInfo = activePowerInfo(snap)
+            let subText: String = {
+                if plugged {
+                    let adp = io.adapterWatts.map { "适配器 \($0)W" } ?? "外接电源"
+                    return "\(pInfo.label): \(pInfo.value) · \(adp)"
+                } else {
+                    let eta = snap.human.map { "约剩余 \($0)" } ?? "放电中"
+                    return "\(pInfo.label): \(pInfo.value) · \(eta)"
+                }
+            }()
+            let cardProps = BatteryMenuCardView.Props(
+                percent: p,
+                plugged: plugged,
+                isCharging: isChg,
+                isBypass: isBypass,
+                statusBadgeText: badgeText,
+                subtitleText: subText
+            )
+            let cardView = BatteryMenuCardView(props: cardProps)
+            let cardItem = MenuCardMenuItem()
+            cardItem.view = cardView
+            cardItem.isEnabled = true
+            menu.addItem(cardItem)
+            menu.addItem(.separator())
+        }
 
+        // --- 1. 核心供电与功率指标 ---
         let modeVal: String = {
             if plugged {
                 if isChg {
@@ -204,9 +238,15 @@ final class App: NSObject, NSApplicationDelegate {
         }()
         addKeyValueItem(menu, key: "供电状态", value: modeVal, valueColor: isChg ? .systemGreen : .labelColor, isBold: true)
 
-        if let pl = formattedPowerLine(snap) {
-            addKeyValueItem(menu, key: "实时功率", value: pl.text, valueColor: pl.color, isBold: true)
-        }
+        let pInfo = activePowerInfo(snap)
+        addKeyValueItem(
+            menu,
+            key: pInfo.label,
+            value: pInfo.value,
+            valueSuffix: pInfo.subtext.isEmpty ? "" : " \(pInfo.subtext)",
+            valueColor: pInfo.isGreen ? .systemGreen : .labelColor,
+            isBold: true
+        )
 
         let timeRemainingVal: String = {
             if plugged {
@@ -221,7 +261,7 @@ final class App: NSObject, NSApplicationDelegate {
         }()
         addKeyValueItem(menu, key: isChg ? "充满时间" : "续航时间", value: timeRemainingVal, valueColor: .labelColor, isBold: false)
 
-        // --- 2. 电池健康与硬件容量 (对标竞品，清晰单列呈现) ---
+        // --- 2. 电池健康与硬件容量 ---
         menu.addItem(.separator())
 
         if let h = healthPercent(rawMax: io.rawMaxCapacity, design: io.designCapacity) {
@@ -234,14 +274,8 @@ final class App: NSObject, NSApplicationDelegate {
             addKeyValueItem(menu, key: "当前容量", value: "\(cur) mAh", valueColor: .labelColor, isBold: false)
         }
         if let mx = io.rawMaxCapacity {
-            addKeyValueItem(menu, key: "全负荷容量", value: "\(mx) mAh", valueColor: .labelColor, isBold: false)
-        }
-        if let d = io.designCapacity {
-            addKeyValueItem(menu, key: "设计容量", value: "\(d) mAh", valueColor: .labelColor, isBold: false)
-        }
-        if let v = io.voltageMV {
-            let vStr = String(format: "%.2f V", Double(v) / 1000.0)
-            addKeyValueItem(menu, key: "当前电压", value: vStr, valueColor: .labelColor, isBold: false)
+            let desStr = io.designCapacity.map { " (设计 \($0) mAh)" } ?? ""
+            addKeyValueItem(menu, key: "全负荷容量", value: "\(mx) mAh\(desStr)", valueColor: .labelColor, isBold: false)
         }
 
         // --- 3. 电源适配器详情 (插电时显示) ---
@@ -375,24 +409,46 @@ final class App: NSObject, NSApplicationDelegate {
         alert.runModal()
     }
 
-    // MARK: Formatted strings
-
-    private func formattedPowerLine(_ snap: Snapshot) -> (text: String, color: NSColor)? {
+    private func activePowerInfo(_ snap: Snapshot) -> (label: String, value: String, subtext: String, isGreen: Bool) {
         let io = snap.ioreg
-        guard let v = io.voltageMV, let amp = io.instantAmperageRaw else { return nil }
-        let isChg = amp.count < 11
-        guard let mag = dischargeMagnitude(instantAmperageRaw: amp) else { return nil }
-        let watts = Double(v) * Double(mag) / 1_000_000.0
-        let w = String(format: "%.1f", watts)
+        let plugged = snap.reading.plugged
+        let isChg = snap.reading.state == .charging
 
-        if snap.reading.plugged {
-            if isChg && watts > 0.3 {
-                return ("充电中 \(w) W", .systemGreen)
+        if plugged {
+            // 插电模式：输入功率 (适配器供入整机的真实功率)
+            if let sysMW = io.systemPowerInMW, sysMW > 0 {
+                let watts = Double(sysMW) / 1000.0
+                let wStr = String(format: "%.1f W", watts)
+                if isChg {
+                    return ("输入功率", wStr, "(快速充电中)", true)
+                } else {
+                    return ("输入功率", wStr, "(电源直接供电，电池闲置)", false)
+                }
+            } else if let sysLoad = io.systemLoadMW, sysLoad > 0 {
+                let watts = Double(sysLoad) / 1000.0
+                let wStr = String(format: "%.1f W", watts)
+                return ("输入功率", wStr, "(整机运行供电)", false)
+            } else if isChg, let v = io.voltageMV, let amp = io.instantAmperageRaw,
+                      let mag = dischargeMagnitude(instantAmperageRaw: amp), amp.count < 11 {
+                let watts = Double(v) * Double(mag) / 1_000_000.0
+                return ("输入功率", String(format: "%.1f W", watts), "(充入电池功率)", true)
             } else {
-                return ("0.0 W (电源直接供电，电池闲置)", .labelColor)
+                return ("输入功率", "供电中", "(电池闲置保护)", false)
             }
         } else {
-            return ("放电中 \(w) W", .labelColor)
+            // 放电模式：当前功耗 (电池放电给整机的实时功耗)
+            if let v = io.voltageMV, let amp = io.instantAmperageRaw,
+               let mag = dischargeMagnitude(instantAmperageRaw: amp) {
+                let watts = Double(v) * Double(mag) / 1_000_000.0
+                let wStr = String(format: "%.1f W", watts)
+                return ("当前功耗", wStr, "(整机电池放电)", false)
+            } else if let sysLoad = io.systemLoadMW, sysLoad > 0 {
+                let watts = Double(sysLoad) / 1000.0
+                let wStr = String(format: "%.1f W", watts)
+                return ("当前功耗", wStr, "(整机运行功耗)", false)
+            } else {
+                return ("当前功耗", "计算中…", "", false)
+            }
         }
     }
 
@@ -516,6 +572,16 @@ private func hhmmToMinutes(_ hmm: String) -> Int {
 
 private func minutesToHHMM(_ mins: Int) -> String {
     String(format: "%d:%02d", mins / 60, mins % 60)
+}
+
+// MARK: - Menu card wrapper item
+
+/// Card rows draw their own appearance; suppress AppKit default highlight
+final class MenuCardMenuItem: NSMenuItem {
+    override var isHighlighted: Bool {
+        get { false }
+        set { }
+    }
 }
 
 // MARK: - Entry point
