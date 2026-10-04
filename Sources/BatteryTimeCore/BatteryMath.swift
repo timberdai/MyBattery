@@ -15,9 +15,9 @@ public func humanize(_ hmm: String) -> String {
     let parts = hmm.split(separator: ":")
     let h = parts.count > 0 ? Int(parts[0]) ?? 0 : 0
     let m = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
-    if h > 0 && m > 0 { return "\(h) hr \(m) min" }
-    if h > 0 { return "\(h) hr" }
-    return "\(m) min"
+    if h > 0 && m > 0 { return "\(h) 小时 \(m) 分钟" }
+    if h > 0 { return "\(h) 小时" }
+    return "\(m) 分钟"
 }
 
 public func celsius(fromCentiC c: Int) -> Int { c / 100 }

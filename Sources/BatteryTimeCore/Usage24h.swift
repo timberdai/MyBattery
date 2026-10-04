@@ -92,17 +92,17 @@ public func parsePmsetLog(_ log: String, now: Date) -> Usage24h {
 public func batteryTips(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?) -> [String] {
     var tips: [String] = []
     if let mc = u.minCharge, mc >= 0, (mc <= 15 || u.lowEpisodes >= 2) {
-        let ep = u.lowEpisodes >= 2 ? " (\(u.lowEpisodes)× under 20%)" : ""
-        tips.append("You dropped to \(mc)% recently\(ep). Recharge before ~20% — deep discharges add wear.")
+        let ep = u.lowEpisodes >= 2 ? "（\(u.lowEpisodes) 次低于 20%）" : ""
+        tips.append("近期电量曾降至 \(mc)%\(ep)。建议在 20% 左右及时充电——深度放电会加剧电池损耗。")
     }
     if u.highACSeconds >= 28800 {
-        tips.append("Plugged in near full \(u.highACSeconds / 3600)h today. Sitting at high charge ages Li-ion — enable Optimized Charging / 80% limit.")
+        tips.append("今日在高电量状态连接电源已达 \(u.highACSeconds / 3600) 小时。锂电池长期处于高电量会加速老化——建议开启“优化电池充电”或 80% 充电上限。")
     }
     if let t = temperatureCentiC, t / 100 >= 35 {
-        tips.append("Battery is \(t / 100)°C now. Heat is the top cause of aging — improve airflow, ease load while charging.")
+        tips.append("当前电池温度为 \(t / 100)°C。高温是电池老化的首要原因——请改善散热，充电时尽量减轻系统负载。")
     }
     if let c = cycleCount, c >= 800 {
-        tips.append("Cycle count \(c) of ~1000 rated — nearing rated life; some capacity loss is expected.")
+        tips.append("当前循环计数为 \(c) 次（设计寿命约 1000 次）——已接近额定寿命，出现一定容量损耗属于正常现象。")
     }
     return tips
 }

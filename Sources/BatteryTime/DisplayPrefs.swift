@@ -27,11 +27,6 @@ enum DisplayPrefs {
         get { boolOr(kShowIcon, true) }
         set { defaults.set(newValue, forKey: kShowIcon) }
     }
-    /// The mascot's face on the battery glyph.
-    static var showFace: Bool {
-        get { boolOr(kShowFace, true) }
-        set { defaults.set(newValue, forKey: kShowFace) }
-    }
     static var showPct: Bool {
         get { boolOr(kShowPct, false) }
         set { defaults.set(newValue, forKey: kShowPct) }
