@@ -12,13 +12,12 @@ import StatusItemKit
 
 private let kPmset = "/usr/bin/pmset"
 private let kIoreg = "/usr/sbin/ioreg"
-private let kSudo = "/usr/bin/sudo"
 private let kOpen = "/usr/bin/open"
 private let kSettingsURL = "x-apple.systempreferences:com.apple.Battery-Settings.extension"
 
 // MARK: - Polled snapshot of everything the title + menu need
 
-private struct Snapshot {
+struct Snapshot {
     var reading: BatteryReading
     var ioreg: IORegBattery
     var powermode: Int?          // 0 Automatic, 1 Low, 2 High
@@ -32,9 +31,6 @@ private struct Snapshot {
 
 final class App: NSObject, NSApplicationDelegate {
     private var controller: StatusItemController!
-    /// Steps this icon aside while Curtain reveals the hidden block — the bar has
-    /// no spare room, so a reveal borrows slots from the apps that cooperate.
-    /// Restores itself on a timer if Curtain goes away mid-reveal.
     private var yieldClient: YieldClient!
     private var watcher: PowerSourceWatcher!
     private var latest: Snapshot?
@@ -45,11 +41,6 @@ final class App: NSObject, NSApplicationDelegate {
     private let usageQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.usage")
     private var usageComputing = false
 
-    // Poll runs its blocking pmset/ioreg calls off the main thread. These two
-    // flags are main-thread only: a refresh requested while one is in flight
-    // (e.g. a plug/unplug from the watcher, or a menu action) is coalesced into
-    // a single follow-up run rather than dropped, so event-driven refreshes stay
-    // responsive without stacking.
     private let pollQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.poll")
     private var pollInFlight = false
     private var pollPending = false
@@ -64,8 +55,6 @@ final class App: NSObject, NSApplicationDelegate {
         yieldClient = YieldClient(item: controller)
         yieldClient.start()
 
-        // Instant plug/unplug refresh via IOKit power-source notifications,
-        // replacing the plugin's power-watch launchd agent.
         watcher = PowerSourceWatcher(onChange: { [weak self] in self?.refreshNow() })
         watcher.start()
     }
@@ -74,11 +63,6 @@ final class App: NSObject, NSApplicationDelegate {
 
     func refreshNow() { poll() }
 
-    // Called on the main thread (timer, power-source watcher, or a menu action).
-    // The blocking pmset/ioreg calls run on a background queue so a slow tool can
-    // never freeze the run loop and stop the menu opening on click; the snapshot
-    // is committed + rendered back on main (latest/render/maybeRecomputeUsage are
-    // all main-thread state). A refresh requested mid-flight is coalesced.
     private func poll() {
         if pollInFlight { pollPending = true; return }
         pollInFlight = true
@@ -92,12 +76,10 @@ final class App: NSObject, NSApplicationDelegate {
             let ioreg = parseIORegBattery(ioregRaw)
             let powermode = parsePowermode(pmRaw)
 
-            // --- ETA (mirrors plugin 63-121) ---
             var time = ""
             switch reading.state {
             case .discharging:
                 if let raw = reading.rawTime {
-                    // 95% of macOS's estimate (it runs a little optimistic)
                     let mins = (hhmmToMinutes(raw) * 95) / 100
                     time = minutesToHHMM(mins)
                 }
@@ -106,7 +88,6 @@ final class App: NSObject, NSApplicationDelegate {
             default:
                 break
             }
-            // stop-gap right after unplug, before macOS has its own estimate
             if !reading.plugged, time.isEmpty, let rawCur = ioreg.rawCurrentCapacity {
                 if let emins = etaStopgapMinutes(rawCurrent: rawCur, voltageMV: ioreg.voltageMV,
                                                  instantAmperageRaw: ioreg.instantAmperageRaw) {
@@ -114,11 +95,8 @@ final class App: NSObject, NSApplicationDelegate {
                 }
             }
 
-            // humanized for the dropdown
             let human: String? = time.isEmpty ? nil : humanize(time)
 
-            // menu-bar time: plugged -> time (may be empty); else time or "--:--".
-            // whole hours render compactly ("19:00" -> "19h").
             var mbTime = reading.plugged ? time : (time.isEmpty ? "--:--" : time)
             if mbTime.hasSuffix(":00") {
                 mbTime = String(mbTime.dropLast(3)) + "h"
@@ -131,7 +109,7 @@ final class App: NSObject, NSApplicationDelegate {
                                 usage: nil)
             DispatchQueue.main.async {
                 self.pollInFlight = false
-                snap.usage = self.usage24h          // usage24h is main-owned; read here
+                snap.usage = self.usage24h
                 self.latest = snap
                 self.render(snap)
                 self.maybeRecomputeUsage()
@@ -146,7 +124,6 @@ final class App: NSObject, NSApplicationDelegate {
         let pct = snap.reading.percent
         let isCharging = snap.reading.state == .charging
 
-        // fill colour (plugin 148-154): mode wins over the low warning.
         let fill: BatteryFill
         if snap.powermode == 2 { fill = .blue }
         else if snap.powermode == 1 { fill = .yellow }
@@ -157,20 +134,18 @@ final class App: NSObject, NSApplicationDelegate {
         let showPct = DisplayPrefs.showPct
         let showTime = DisplayPrefs.showTime
 
-        let leadTxt = (showPct && pct != nil) ? "\(pct!)%" : ""
-        let timeTxt = (showTime && !snap.mbTime.isEmpty) ? snap.mbTime : ""
+        var trailingParts: [String] = []
+        if showPct, let p = pct {
+            trailingParts.append("\(p)%")
+        }
+        if showTime, !snap.mbTime.isEmpty {
+            trailingParts.append(snap.mbTime)
+        }
+        let trailingTxt = trailingParts.joined(separator: " ")
 
-        // glyph shown when the icon toggle is on and we have a percentage
         let glyph = showIcon && pct != nil
 
         if glyph {
-            // Opaque, appearance-resolving ink: a dynamic NSColor whose provider runs
-            // at DRAW time under the menu bar's real appearance (white in dark, black
-            // in light). That makes the glyph adapt like a template — including the
-            // fullscreen-reveal dark bar — WITHOUT sampling effectiveAppearance (which
-            // oscillates during the reveal). It must be fully opaque: labelColor is
-            // only ~85% alpha, which renders the template glyph translucent/grey
-            // instead of the solid menu-bar colour the other icons use.
             let ink = NSColor(name: nil) { appearance in
                 appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
             }
@@ -178,15 +153,13 @@ final class App: NSObject, NSApplicationDelegate {
                 pct: pct!,
                 charging: isCharging,
                 plugged: snap.reading.plugged,
-                lead: leadTxt,
-                trailing: timeTxt,
+                lead: "",
+                trailing: trailingTxt,
                 ink: ink,
-                fill: fill,
-                face: DisplayPrefs.showFace
+                fill: fill
             )
             controller.setIcon(image)
         } else {
-            // text fallback: % (stands in for the glyph) then time
             var parts: [String] = []
             if let p = pct, showPct || showIcon { parts.append("\(p)%") }
             if showTime, !snap.mbTime.isEmpty { parts.append(snap.mbTime) }
@@ -198,114 +171,172 @@ final class App: NSObject, NSApplicationDelegate {
     // MARK: Build the dropdown
 
     private func buildMenu(_ menu: NSMenu) {
+        menu.autoenablesItems = false
         guard let snap = latest else {
-            menu.addItem(NSMenuItem(title: "…", action: nil, keyEquivalent: ""))
+            let item = NSMenuItem(title: "…", action: nil, keyEquivalent: "")
+            item.isEnabled = true
+            menu.addItem(item)
             return
         }
         let plugged = snap.reading.plugged
         let io = snap.ioreg
+        let pct = snap.reading.percent
+        let isChg = snap.reading.state == .charging
 
-        // --- Energy Mode selector (first section, plugin 221-238) ---
-        let header = NSMenuItem(title: "Energy Mode", action: nil, keyEquivalent: "")
-        header.attributedTitle = NSAttributedString(
-            string: "Energy Mode",
+        // --- 1. 核心电量与状态 ---
+        let pctValStr = pct.map { "\($0)%" } ?? "不可用"
+        let pctColor: NSColor = plugged ? .systemGreen : (pct ?? 100 <= 20 ? .systemRed : .labelColor)
+        addKeyValueItem(menu, key: "电池电量", value: pctValStr, valueColor: pctColor, isBold: true)
+
+        let modeVal: String = {
+            if plugged {
+                if isChg {
+                    let eta = snap.human.map { " (还有 \($0)充满)" } ?? ""
+                    return "充电中\(eta)"
+                } else {
+                    let reason = (io.notChargingReason == 16777216 || pct == 80) ? " (80%上限保护)" : ""
+                    return "外接电源 · 旁路供电\(reason)"
+                }
+            } else {
+                let eta = snap.human.map { " (约剩余 \($0))" } ?? ""
+                return "电池供电\(eta)"
+            }
+        }()
+        addKeyValueItem(menu, key: "供电状态", value: modeVal, valueColor: isChg ? .systemGreen : .labelColor, isBold: true)
+
+        if let pl = formattedPowerLine(snap) {
+            addKeyValueItem(menu, key: "实时功率", value: pl.text, valueColor: pl.color, isBold: true)
+        }
+
+        let timeRemainingVal: String = {
+            if plugged {
+                if isChg {
+                    return snap.human.map { "预计 \($0)" } ?? "正在计算..."
+                } else {
+                    return "未在充电"
+                }
+            } else {
+                return snap.human.map { "预计可用 \($0)" } ?? "正在计算..."
+            }
+        }()
+        addKeyValueItem(menu, key: isChg ? "充满时间" : "续航时间", value: timeRemainingVal, valueColor: .labelColor, isBold: false)
+
+        // --- 2. 电池健康与硬件容量 (对标竞品，清晰单列呈现) ---
+        menu.addItem(.separator())
+
+        if let h = healthPercent(rawMax: io.rawMaxCapacity, design: io.designCapacity) {
+            addKeyValueItem(menu, key: "电池健康", value: "\(h)%", valueColor: .systemGreen, isBold: true)
+        }
+        if let cyc = io.cycleCount {
+            addKeyValueItem(menu, key: "循环次数", value: "\(cyc) 次", valueColor: .labelColor, isBold: true)
+        }
+        if let cur = io.rawCurrentCapacity {
+            addKeyValueItem(menu, key: "当前容量", value: "\(cur) mAh", valueColor: .labelColor, isBold: false)
+        }
+        if let mx = io.rawMaxCapacity {
+            addKeyValueItem(menu, key: "全负荷容量", value: "\(mx) mAh", valueColor: .labelColor, isBold: false)
+        }
+        if let d = io.designCapacity {
+            addKeyValueItem(menu, key: "设计容量", value: "\(d) mAh", valueColor: .labelColor, isBold: false)
+        }
+        if let v = io.voltageMV {
+            let vStr = String(format: "%.2f V", Double(v) / 1000.0)
+            addKeyValueItem(menu, key: "当前电压", value: vStr, valueColor: .labelColor, isBold: false)
+        }
+
+        // --- 3. 电源适配器详情 (插电时显示) ---
+        if plugged {
+            menu.addItem(.separator())
+            let adapterStr = formattedAdapterLine(io)
+            addKeyValueItem(menu, key: "电源适配器", value: adapterStr, valueColor: .labelColor, isBold: false)
+        }
+
+        // --- 4. 24 小时用电统计 (精炼单行) ---
+        if let usage = snap.usage, let lines = usageLines(usage) {
+            menu.addItem(.separator())
+            let uItem = NSMenuItem(title: "24小时用电: \(lines.0) · \(lines.1)", action: nil, keyEquivalent: "")
+            uItem.attributedTitle = NSAttributedString(
+                string: "24小时用电: \(lines.0) · \(lines.1)",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 11.5),
+                    .foregroundColor: NSColor.secondaryLabelColor
+                ]
+            )
+            uItem.isEnabled = true
+            menu.addItem(uItem)
+        }
+
+        // --- 5. 菜单栏显示与设置 ---
+        menu.addItem(.separator())
+        let sHeader = NSMenuItem(title: "设置", action: nil, keyEquivalent: "")
+        sHeader.attributedTitle = NSAttributedString(
+            string: "设置",
             attributes: [
                 .font: NSFont.systemFont(ofSize: 11),
                 .foregroundColor: NSColor.secondaryLabelColor,
             ]
         )
-        menu.addItem(header)
-        let pmSrc = plugged ? "-c" : "-b"
-        addModeItem(menu, value: 0, label: "Automatic", current: snap.powermode, src: pmSrc)
-        addModeItem(menu, value: 1, label: "Low Power", current: snap.powermode, src: pmSrc)
-        addModeItem(menu, value: 2, label: "High Power", current: snap.powermode, src: pmSrc)
+        sHeader.isEnabled = false
+        menu.addItem(sHeader)
 
-        menu.addItem(.separator())
+        addToggle(menu, title: "电池图标", on: DisplayPrefs.showIcon, action: #selector(toggleIcon))
+        addToggle(menu, title: "电量百分比", on: DisplayPrefs.showPct, action: #selector(togglePct))
+        addToggle(menu, title: "剩余时间", on: DisplayPrefs.showTime, action: #selector(toggleTime))
 
-        // --- Battery + detail ---
-        let pctStr = snap.reading.percent.map { "\($0)%" } ?? "n/a"
-        menu.addItem(NSMenuItem(title: "Battery: \(pctStr)", action: nil, keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: detailLine(snap), action: nil, keyEquivalent: ""))
-
-        // Health
-        if let h = healthPercent(rawMax: io.rawMaxCapacity, design: io.designCapacity) {
-            let cyc = io.cycleCount.map { " (\($0) cycles)" } ?? ""
-            menu.addItem(NSMenuItem(title: "Health: \(h)%\(cyc)", action: nil, keyEquivalent: ""))
-        }
-        // Power (W)
-        if let pl = powerLine(snap) {
-            menu.addItem(NSMenuItem(title: pl, action: nil, keyEquivalent: ""))
-        }
-        // Adapter
-        if plugged, io.adapterName != nil || io.adapterWatts != nil {
-            let name = io.adapterName ?? io.adapterWatts.map { "\($0) W" } ?? ""
-            menu.addItem(NSMenuItem(title: "Adapter: \(name)", action: nil, keyEquivalent: ""))
-        }
-        // extras: temp · V · mAh
-        if let extras = extrasLine(snap), !extras.isEmpty {
-            menu.addItem(NSMenuItem(title: extras, action: nil, keyEquivalent: ""))
-        }
-        // temp toggle
-        if io.temperatureCentiC != nil {
-            let toC = DisplayPrefs.tempUnit == "C"
-            let item = NSMenuItem(title: toC ? "Switch to °F" : "Switch to °C",
-                                  action: #selector(toggleTempUnit), keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-
-        // --- 24h usage ---
-        if let usage = snap.usage, let lines = usageLines(usage) {
-            menu.addItem(.separator())
-            menu.addItem(NSMenuItem(title: lines.0, action: nil, keyEquivalent: ""))
-            menu.addItem(NSMenuItem(title: lines.1, action: nil, keyEquivalent: ""))
-        }
-
-        // --- Battery Life Tips (only when a trigger fires) ---
-        let tipsUsage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
-                                               minCharge: nil, highACSeconds: 0, lowEpisodes: 0)
-        let tips = batteryTips(usage: tipsUsage,
-                               temperatureCentiC: io.temperatureCentiC,
-                               cycleCount: io.cycleCount)
-        if !tips.isEmpty {
-            menu.addItem(.separator())
-            let item = NSMenuItem(title: "Battery Life Tips", action: #selector(showTips(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = tips
-            menu.addItem(item)
-        }
-
-        // --- Menu bar shows… (display toggles) ---
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
-        addToggle(menu, title: "Battery icon", on: DisplayPrefs.showIcon, action: #selector(toggleIcon))
-        addToggle(menu, title: "Battery face", on: DisplayPrefs.showFace, action: #selector(toggleFace))
-        addToggle(menu, title: "Percentage", on: DisplayPrefs.showPct, action: #selector(togglePct))
-        addToggle(menu, title: "Time remaining", on: DisplayPrefs.showTime, action: #selector(toggleTime))
-
-        // --- Start at Login ---
-        menu.addItem(.separator())
-        let login = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
+        let login = NSMenuItem(title: "登录时启动", action: #selector(toggleLogin), keyEquivalent: "")
         login.target = self
         login.state = LoginItem.isEnabled ? .on : .off
         menu.addItem(login)
 
-        // --- Open Battery Settings ---
-        let settings = NSMenuItem(title: "Open Battery Settings…", action: #selector(openSettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: "打开“电池”设置…", action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
 
-        // --- Quit (no target -> standard responder chain) ---
+        // --- 6. 版本与退出 ---
         menu.addItem(.separator())
         menu.addItem(AppVersion.menuItem())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
     }
 
-    private func addModeItem(_ menu: NSMenu, value: Int, label: String, current: Int?, src: String) {
-        let item = NSMenuItem(title: label, action: #selector(setPowerMode(_:)), keyEquivalent: "")
-        item.target = self
-        item.state = (current == value) ? .on : .off
-        item.representedObject = [src, String(value)]
+    /// 高对比度富文本菜单项：左侧次级灰色优雅标签，右侧清晰主色数值
+    private func addKeyValueItem(
+        _ menu: NSMenu,
+        key: String,
+        value: String,
+        valueSuffix: String = "",
+        valueColor: NSColor = .labelColor,
+        isBold: Bool = false
+    ) {
+        let item = NSMenuItem(title: "\(key): \(value)\(valueSuffix)", action: nil, keyEquivalent: "")
+        item.isEnabled = true
+        let attr = NSMutableAttributedString()
+        let keyFont = NSFont.systemFont(ofSize: 12.5, weight: .regular)
+        let valFont = isBold ? NSFont.systemFont(ofSize: 13, weight: .semibold) : NSFont.systemFont(ofSize: 13, weight: .regular)
+
+        attr.append(NSAttributedString(
+            string: key + ":  ",
+            attributes: [
+                .font: keyFont,
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        ))
+        attr.append(NSAttributedString(
+            string: value,
+            attributes: [
+                .font: valFont,
+                .foregroundColor: valueColor
+            ]
+        ))
+        if !valueSuffix.isEmpty {
+            attr.append(NSAttributedString(
+                string: valueSuffix,
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 12),
+                    .foregroundColor: NSColor.secondaryLabelColor
+                ]
+            ))
+        }
+        item.attributedTitle = attr
         menu.addItem(item)
     }
 
@@ -318,19 +349,12 @@ final class App: NSObject, NSApplicationDelegate {
 
     // MARK: Menu actions
 
-    @objc private func setPowerMode(_ sender: NSMenuItem) {
-        guard let pair = sender.representedObject as? [String], pair.count == 2 else { return }
-        _ = Shell.run(kSudo, [kPmset, pair[0], "powermode", pair[1]])
-        poll()
-    }
-
     @objc private func toggleTempUnit() {
         DisplayPrefs.tempUnit = DisplayPrefs.tempUnit == "C" ? "F" : "C"
         poll()
     }
 
     @objc private func toggleIcon() { DisplayPrefs.showIcon.toggle(); rerender() }
-    @objc private func toggleFace() { DisplayPrefs.showFace.toggle(); rerender() }
     @objc private func togglePct() { DisplayPrefs.showPct.toggle(); rerender() }
     @objc private func toggleTime() { DisplayPrefs.showTime.toggle(); rerender() }
 
@@ -345,40 +369,50 @@ final class App: NSObject, NSApplicationDelegate {
     @objc private func showTips(_ sender: NSMenuItem) {
         guard let tips = sender.representedObject as? [String] else { return }
         let alert = NSAlert()
-        alert.messageText = "Battery Life Tips"
+        alert.messageText = "电池养护提示"
         alert.informativeText = tips.map { "💡 \($0)" }.joined(separator: "\n\n")
         alert.alertStyle = .informational
         alert.runModal()
     }
 
-    // MARK: Dropdown helpers
+    // MARK: Formatted strings
 
-    private func detailLine(_ snap: Snapshot) -> String {
-        if snap.reading.plugged {
-            if snap.reading.state == .charging {
-                if let h = snap.human { return "Charging - \(h) until full" }
-                return "Charging"
-            }
-            return snap.statusText
-        } else {
-            if let h = snap.human { return "\(h) until empty" }
-            return "On battery (estimating...)"
-        }
-    }
-
-    private func powerLine(_ snap: Snapshot) -> String? {
+    private func formattedPowerLine(_ snap: Snapshot) -> (text: String, color: NSColor)? {
         let io = snap.ioreg
         guard let v = io.voltageMV, let amp = io.instantAmperageRaw else { return nil }
-        let charging = amp.count < 11
+        let isChg = amp.count < 11
         guard let mag = dischargeMagnitude(instantAmperageRaw: amp) else { return nil }
         let watts = Double(v) * Double(mag) / 1_000_000.0
         let w = String(format: "%.1f", watts)
-        if snap.reading.plugged, charging {
-            return "Charging at \(w) W"
-        } else if !snap.reading.plugged {
-            return "Using \(w) W"
+
+        if snap.reading.plugged {
+            if isChg && watts > 0.3 {
+                return ("充电中 \(w) W", .systemGreen)
+            } else {
+                return ("0.0 W (电源直接供电，电池闲置)", .labelColor)
+            }
+        } else {
+            return ("放电中 \(w) W", .labelColor)
         }
-        return nil
+    }
+
+    private func formattedAdapterLine(_ io: IORegBattery) -> String {
+        var parts: [String] = []
+        if let p = io.adapterProtocol { parts.append(p) }
+        if let w = io.adapterWatts { parts.append("\(w) W") }
+        else if let name = io.adapterName { parts.append(name) }
+
+        var specParts: [String] = []
+        if let v = io.adapterVoltageMV {
+            specParts.append(String(format: "%.1f V", Double(v) / 1000.0))
+        }
+        if let cur = io.adapterCurrentMA {
+            specParts.append(String(format: "%.1f A", Double(cur) / 1000.0))
+        }
+        if !specParts.isEmpty {
+            parts.append("(\(specParts.joined(separator: " / ")))")
+        }
+        return parts.isEmpty ? "已连接" : parts.joined(separator: " ")
     }
 
     private func extrasLine(_ snap: Snapshot) -> String? {
@@ -400,13 +434,23 @@ final class App: NSObject, NSApplicationDelegate {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    private func compactDuration(_ seconds: Int) -> String {
+        let h = seconds / 3600
+        let m = (seconds % 3600) / 60
+        if h > 0 && m > 0 { return "\(h)小时\(m)分" }
+        if h > 0 { return "\(h)小时" }
+        return "\(m)分钟"
+    }
+
     private func usageLines(_ u: Usage24h) -> (String, String)? {
         let total = u.batterySeconds + u.acSeconds
         guard total > 0 else { return nil }
         let pb = (u.batterySeconds * 100 + total / 2) / total
         let pa = 100 - pb
-        let battLine = "24h on battery: \(u.batterySeconds / 3600)h \((u.batterySeconds % 3600) / 60)m (\(pb)%)"
-        let acLine = "24h plugged in: \(u.acSeconds / 3600)h \((u.acSeconds % 3600) / 60)m (\(pa)%)"
+        let bTime = compactDuration(u.batterySeconds)
+        let aTime = compactDuration(u.acSeconds)
+        let battLine = "电池: \(bTime) (\(pb)%)"
+        let acLine = "供电: \(aTime) (\(pa)%)"
         return (battLine, acLine)
     }
 
@@ -443,17 +487,16 @@ final class App: NSObject, NSApplicationDelegate {
 private func statusLabel(_ r: BatteryReading) -> String {
     if r.plugged {
         switch r.state {
-        case .notCharging: return "Plugged in (not charging)"
-        case .charging: return "Charging"
-        case .charged: return "Fully charged"
-        default: return "Plugged in"
+        case .notCharging: return "已连接电源（未充电）"
+        case .charging: return "充电中"
+        case .charged: return "已充满"
+        default: return "已连接电源"
         }
     }
-    return "On battery"
+    return "使用电池"
 }
 
 private func parsePowermode(_ raw: String) -> Int? {
-    // a line like:   powermode            0
     for line in raw.split(separator: "\n") {
         let t = line.trimmingCharacters(in: .whitespaces)
         if t.hasPrefix("powermode") {
@@ -477,9 +520,6 @@ private func minutesToHHMM(_ mins: Int) -> String {
 
 // MARK: - Entry point
 
-// Handle `--login on|off|status` and exit before any UI exists. Start at Login is
-// SMAppService.mainApp, which can only register the calling process's own bundle,
-// so this is the only way an installer or script can turn it on.
 LoginCLI.runIfRequested()
 
 let app = NSApplication.shared

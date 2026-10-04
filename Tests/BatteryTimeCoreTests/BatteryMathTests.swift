@@ -15,9 +15,9 @@ final class BatteryMathTests: XCTestCase {
         XCTAssertNil(healthPercent(rawMax: 4100, design: 0))
     }
     func testHumanize() {
-        XCTAssertEqual(humanize("3:14"), "3 hr 14 min")
-        XCTAssertEqual(humanize("2:00"), "2 hr")
-        XCTAssertEqual(humanize("0:42"), "42 min")
+        XCTAssertEqual(humanize("3:14"), "3 小时 14 分钟")
+        XCTAssertEqual(humanize("2:00"), "2 小时")
+        XCTAssertEqual(humanize("0:42"), "42 分钟")
     }
     func testTemp() {
         XCTAssertEqual(celsius(fromCentiC: 3012), 30)
