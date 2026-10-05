@@ -38,10 +38,10 @@ final class App: NSObject, NSApplicationDelegate {
     // 24h cache: recomputed off the poll thread, at most every 10 min.
     private var usage24h: Usage24h?
     private var lastUsageComputed: Date?
-    private let usageQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.usage")
+    private let usageQueue = DispatchQueue(label: "com.timberdai.MyBattery.usage")
     private var usageComputing = false
 
-    private let pollQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.poll")
+    private let pollQueue = DispatchQueue(label: "com.timberdai.MyBattery.poll")
     private var pollInFlight = false
     private var pollPending = false
 
@@ -328,7 +328,16 @@ final class App: NSObject, NSApplicationDelegate {
 
         // --- 6. 版本与退出 ---
         menu.addItem(.separator())
-        menu.addItem(AppVersion.menuItem())
+        let verItem = NSMenuItem(title: "MyBattery v0.1.0", action: nil, keyEquivalent: "")
+        verItem.isEnabled = false
+        verItem.attributedTitle = NSAttributedString(
+            string: "MyBattery v0.1.0",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11),
+                .foregroundColor: NSColor.tertiaryLabelColor
+            ]
+        )
+        menu.addItem(verItem)
         menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
     }
 
