@@ -1,85 +1,93 @@
-# MyBattery 🔋
+# MyBattery
 
-**精美、轻量、现代的 macOS 菜单栏电池工具**  
-针对 Apple Silicon (M1/M2/M3/M4) 与 macOS **80% 充电保护 / 旁路供电**深度定制优化。
+[![Release](https://img.shields.io/github/v/release/timberdai/MyBattery)](https://github.com/timberdai/MyBattery/releases/latest)
+[![Build](https://github.com/timberdai/MyBattery/actions/workflows/release.yml/badge.svg)](https://github.com/timberdai/MyBattery/actions/workflows/release.yml)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](LICENSE)
 
----
+**一个小巧的 macOS 菜单栏电池工具：看电量、充电状态，也看你最关心的瓦数。**
 
-## 💡 灵感与致谢 (Inspiration & Credits)
+[下载最新版](https://github.com/timberdai/MyBattery/releases/latest) · [English](README.en.md) · [反馈问题](https://github.com/timberdai/MyBattery/issues)
 
-本项目的设计灵感源自优秀的开源项目 **[nicholaspsmith/battery-time-menubar](https://github.com/nicholaspsmith/battery-time-menubar)**。在其轻量稳定架构的基础上，我们针对常年外接供电、80% 电池养护上限以及现代 macOS 菜单视觉美学进行了深度重构与功能演进，同时吸收了 [BetterBattery](https://github.com/michaelmax98/BetterBattery) 与 [CodexBar](https://github.com/steipete/CodexBar) 的界面设计哲学。
+MyBattery 从一个日常需求开始：电脑长期插着电，使用 Apple 原生优化充电与 80% 上限时，也想随时知道它是接着电源、正在充电，还是在消耗电池，以及当前到底用了多少功率。顶部快速看状态，点开查看详细信息，保持紧凑的原生菜单。
 
-感谢所有为开源社区贡献力量的开发者！
+## 能看到什么
 
----
+- **电量与状态**：电池图标、百分比、插电和充电标识；支持图标、电量、剩余时间三种显示方式。
+- **实时功率**：区分电池充入、放出、整机输入和负载，缺少读数时明确显示缺数。
+- **适配器与 PD 档位**：查看系统报告的 PD、USB、MagSafe 类型、适配器瓦数及供电档位。
+- **电池状态**：温度、健康度、循环次数、当前容量、全充容量和设计容量。
+- **风扇与统计**：当前风扇转速，以及近 24 小时的电池/外接供电时长。
+- **插电特效**：接通电源时显示绿色边缘光晕，通过菜单勾选开启或关闭。
+- **日常操作**：登录时启动、打开系统电池设置和退出。
 
-## ✨ 核心特性 (Features)
+MyBattery 只读取信息，不控制充电上限或风扇。优化充电和 80% 上限继续在 Apple 的电池设置中管理。健康度表示当前容量状态，不预测还可以使用多少年。
 
-* **🔌 80% 充电保护与旁路供电深度识别**
-  * 专为常年插电使用的 Mac 用户量身打造。
-  * 准确区分**正在充电**与**外接电源·旁路供电 (80% 上限保护)**，状态栏图标与详情面板同步高对比度显示，绝无歧义。
+## 安装
 
-* **⚡️ 实时整机输入功率与电池功耗 (Active Power Tracking)**
-  * **插电时**：读取 Apple Silicon 真实遥测数据（`SystemPowerIn`），显示适配器输入给 Mac 整机的真实总功率（如 `16.4 W`），清楚感知是整机运行还是正在快充。
-  * **拔电时**：毫秒级采样瞬时放电电流与电压，显示整机实时消耗功耗（如 `8.5 W`）。
-  * 告别晦涩冷门的标称电压（`12.37 V`），只看对用户最有感知意义的真实瓦数。
+**系统：macOS 13 或更新版本。下载包：Apple Silicon（M 系列）。**
 
-* **🎨 CodexBar 风格微型卡片与胶囊进度条 (Modern Header Card)**
-  * 菜单顶部集成轻量级毛玻璃 Header 卡片：
-    * **大号粗体电量数值**（`80%`，插电翡翠绿高亮）；
-    * **自适应状态药丸徽章**（`外接供电 · 旁路保护` / `⚡️ 充电中` / `🔋 电池供电`）；
-    * **Retina 微型胶囊进度条**：全圆角自绘轨道，**在 80% 阈值处精致雕琢了物理刻度标记线（Tick Marker）**；
-    * **实时摘要副标**：一目了然当前功率与电源适配器档位。
+1. 在 [Releases](https://github.com/timberdai/MyBattery/releases/latest) 下载 `MyBattery-0.1.0-arm64.dmg`。
+2. 打开 DMG，将 `MyBattery.app` 拖进旁边的 `Applications`（应用程序）。
+3. 从“应用程序”打开 MyBattery；它会出现在菜单栏，不显示 Dock 图标。
+4. 按需勾选“登录时启动”。
 
-* **📊 完整的电池硬件与健康档案 (Hardware Telemetry)**
-  * 电池健康度（出厂容量衰减比）与循环次数；
-  * 当前实时容量、全负荷容量与出厂设计容量（mAh）；
-  * 电源适配器真实握手协议（USB-PD 档位，如 `20.0 V / 4.5 A (90 W)`）；
-  * 24 小时电池 vs 供电使用时间统计。
+当前没有 Apple 开发者公证。首次打开若被系统拦截，在“系统设置 → 隐私与安全性”按系统提示选择“仍要打开”。读取电池和风扇不需要管理员权限。也可以采用下面的源码安装方式，在本机编译使用。
 
-* **📐 像素级对齐的状态栏图标 (Pixel-Perfect Menu Bar Glyph)**
-  * 21.0 × 11.5 pt 黄金比例胶囊外壳，搭配向右微型极耳；
-  * 饱满圆头的醒目插头与高能闪电标记；
-  * `CGBlendMode.clear` 物理镂空呼吸间距，无论在浅色、深色还是动态壁纸下均有绝佳的对比度。
+Release 中的 **Source code (zip)** 和 **Source code (tar.gz)** 是源码，供开发者编译；普通用户下载 DMG 即可。DMG 的 SHA256 校验值写在发布说明中。
 
----
+## 这几个功率有什么区别
 
-## 🚀 安装与使用 (Getting Started)
+| 参数 | 表示什么 |
+| --- | --- |
+| 充电功率 | 当前实际充入电池的功率。 |
+| 放电功率 | 当前电池向电脑供电的功率。 |
+| 输入功率 | 电源给整台电脑的输入，包含系统用电与可能的电池充电。 |
+| 负载功率 | 系统报告的负载；不能当作电池充电功率。 |
+| 电源适配器 | 系统识别到的协议和适配器瓦数。 |
+| 握手档位 | 用系统报告的供电参数换算出的 PD 档位功率；不是直接抓取握手报文。 |
 
-### 系统要求
-* macOS 13.0 (Ventura) 及更高版本
-* Apple Silicon Mac (M1 / M2 / M3 / M4 系列)
+例如，“PD 100 W”和“握手档位 100 W”可以同时出现，但实际输入可能只有十几瓦，电池也可能因 80% 上限而没有充电。看此刻用了多少，关注“输入功率”；看充进电池多少，关注“充电功率”。
 
-### 从源码构建与运行
+传感器和系统字段因机型而异：没有风扇或读不到温度时，对应项目会隐藏；不会用固定数值冒充读数，也不会把未知协议猜成 PD 3.0/3.1。24 小时统计来自系统电源日志，是供电时长，包含睡眠期间的相应区间。
+
+## 语言
+
+自动读取系统的**首选语言**：中文（包括简体、繁体的系统语言设置）显示简体中文；英语及其他语言显示英语。没有语言切换开关，改系统语言后重新打开应用即可。
+
+## 从源码安装
+
+需要 Swift 5.9 或更新版本及 macOS 开发工具。所需的 StatusItemKit 已随仓库附带，无需下载同级依赖。
+
 ```bash
-# 1. 克隆本仓库
 git clone https://github.com/timberdai/MyBattery.git
 cd MyBattery
-
-# 2. 编译并启动
-swift run -c release
+./scripts/install.sh
 ```
 
-### 极速热重载开发脚本
-本项目内置增量热重载脚本，修改代码后执行以下命令可在 2 秒内完成构建、签名并重启应用：
+脚本会编译、在本机签名、安装到 `~/Applications/MyBattery.app` 并启动。修改后运行 `./scripts/dev-reload.sh` 即可重新构建安装。
+
+## 开发与贡献
+
 ```bash
-./scripts/dev-reload.sh
+swift build -c release
+swift test
+./scripts/run-round2-tests.sh
 ```
 
----
+完整 XCTest 需要含测试框架的 Xcode。仅安装 Command Line Tools 时可使用第三个辅助入口，它直接测试生产解析、功率、边界和只读 SMC 路径，也检查中英文行宽；它不替代完整 XCTest。桌面光效生命周期可用 `./scripts/run-round2-tests.sh --glow` 检查。
 
-## ⚙️ 快捷控制 (Preferences)
+欢迎通过 [Issues](https://github.com/timberdai/MyBattery/issues) 提交问题或通过 Pull Request 改进。报告时附 macOS 版本、Mac 型号、MyBattery 版本、复现步骤及相关截图；不要上传包含设备序列号的完整系统报告。
 
-在菜单面板的“设置”分区中，您可以自由定制：
-- [x] 显示电池图标
-- [x] 显示电量百分比
-- [ ] 显示预估剩余时间 / 充满时间
-- [ ] 开机登录时自动启动
-- ⚙️ 一键直达 macOS 系统“电池”设置
+## 版本与构建
 
----
+`VERSION` 是版本来源，当前为 **0.1.0**。运行 `./scripts/package-release.sh` 会在 `build/` 生成当前架构的 DMG 和校验文件。
 
-## 📄 开源协议 (License)
+主分支和 PR 执行测试与构建；推送匹配的 `mybattery-vX.Y.Z` 标签才发布。首个公开版本使用 `mybattery-v0.1.0`，Release 标题为 `v0.1.0`。原仓库已有的 `v0.1.0` 及 `v1.x` 历史标签保留。
 
-本项目遵循 [MPL-2.0 License](LICENSE) 开源协议。
-欢迎提交 Issue 和 Pull Request 共同改进！
+## 灵感与致谢
+
+- [BetterBattery](https://github.com/michaelmax98/BetterBattery)：轻巧的菜单栏电池与实时功率展示，是这个小工具的灵感之一。
+- [battery-time-menubar](https://github.com/nicholaspsmith/battery-time-menubar)：MyBattery 的代码基础，保留原始版权与历史记录，并在其上完善日常信息展示。
+- [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)：提供菜单栏、版本与登录启动支持。随附版本及适配说明见 [Vendor/StatusItemKit](Vendor/StatusItemKit/README.md)。
+
+作者：[timberdai](https://github.com/timberdai)。遵循 [Mozilla Public License 2.0](LICENSE)。

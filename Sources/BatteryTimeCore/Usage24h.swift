@@ -52,10 +52,12 @@ public func parsePmsetLog(_ log: String, now: Date) -> Usage24h {
         guard let m = re.firstMatch(in: line, range: range),
               let r = Range(m.range(at: 1), in: line) else { continue }
         let tsStr = String(line[r])
-        guard let date = fmt.date(from: tsStr) else { continue }
-        let charge = firstMatch(in: line, pattern: "Charge:\\s*([0-9]+)").flatMap { Int($0) } ?? -1
+        guard let date = fmt.date(from: tsStr), date <= now else { continue }
+        let charge = firstMatch(in: line, pattern: "Charge:\\s*([0-9]+)").flatMap { Int($0) }.flatMap { (0...100).contains($0) ? $0 : nil } ?? -1
         events.append(Event(date: date, isAC: isAC, charge: charge))
     }
+
+    events.sort { $0.date < $1.date }
 
     var batterySeconds = 0
     var acSeconds = 0
@@ -67,7 +69,7 @@ public func parsePmsetLog(_ log: String, now: Date) -> Usage24h {
     for i in events.indices {
         var st = events[i].date
         var en = (i < events.count - 1) ? events[i + 1].date : now
-        if en < win { continue }
+        if en <= win { continue }
         if st < win { st = win }
         if en > now { en = now }
         var d = Int(en.timeIntervalSince(st))
@@ -89,20 +91,20 @@ public func parsePmsetLog(_ log: String, now: Date) -> Usage24h {
 
 /// Battery-longevity tips (plugin lines 293-307). Returns the tip strings
 /// (without the leading 💡), shown only when a trigger fires.
-public func batteryTips(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?) -> [String] {
+public func batteryTips(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?, language: AppLanguage = .system) -> [String] {
     var tips: [String] = []
     if let mc = u.minCharge, mc >= 0, (mc <= 15 || u.lowEpisodes >= 2) {
-        let ep = u.lowEpisodes >= 2 ? "（\(u.lowEpisodes) 次低于 20%）" : ""
-        tips.append("近期电量曾降至 \(mc)%\(ep)。建议在 20% 左右及时充电——深度放电会加剧电池损耗。")
+        let ep = u.lowEpisodes >= 2 ? language.text("（\(u.lowEpisodes) 次低于 20%）", " (\(u.lowEpisodes) dips below 20%)") : ""
+        tips.append(language.text("近期电量曾降至 \(mc)%\(ep)。建议在 20% 左右及时充电——深度放电会加剧电池损耗。", "Charge recently reached \(mc)%\(ep). Charging around 20% helps avoid deep discharges."))
     }
     if u.highACSeconds >= 28800 {
-        tips.append("今日在高电量状态连接电源已达 \(u.highACSeconds / 3600) 小时。锂电池长期处于高电量会加速老化——建议开启“优化电池充电”或 80% 充电上限。")
+        tips.append(language.text("今日在高电量状态连接电源已达 \(u.highACSeconds / 3600) 小时。锂电池长期处于高电量会加速老化——建议开启“优化电池充电”或 80% 充电上限。", "Connected at high charge for \(u.highACSeconds / 3600) hours today. Consider Apple’s Optimized Battery Charging or an 80% limit."))
     }
     if let t = temperatureCentiC, t / 100 >= 35 {
-        tips.append("当前电池温度为 \(t / 100)°C。高温是电池老化的首要原因——请改善散热，充电时尽量减轻系统负载。")
+        tips.append(language.text("当前电池温度为 \(t / 100)°C。高温是电池老化的首要原因——请改善散热，充电时尽量减轻系统负载。", "Battery temperature is \(t / 100)°C. Improve ventilation and reduce heavy workloads while charging."))
     }
     if let c = cycleCount, c >= 800 {
-        tips.append("当前循环计数为 \(c) 次（设计寿命约 1000 次）——已接近额定寿命，出现一定容量损耗属于正常现象。")
+        tips.append(language.text("当前循环计数为 \(c) 次（设计寿命约 1000 次）——已接近额定寿命，出现一定容量损耗属于正常现象。", "Cycle count is \(c). Some capacity loss is expected as the battery ages."))
     }
     return tips
 }

@@ -27,7 +27,7 @@ final class Usage24hTests: XCTestCase {
     }
     func testTipsLowDischargeAndCycles() {
         let u = Usage24h(batterySeconds: 0, acSeconds: 0, minCharge: 12, highACSeconds: 0, lowEpisodes: 1)
-        let tips = batteryTips(usage: u, temperatureCentiC: nil, cycleCount: 850)
+        let tips = batteryTips(usage: u, temperatureCentiC: nil, cycleCount: 850, language: .chinese)
         XCTAssertTrue(tips.contains { $0.contains("12%") })          // deep-discharge tip
         XCTAssertTrue(tips.contains { $0.contains("循环计数为 850") }) // cycle tip
     }

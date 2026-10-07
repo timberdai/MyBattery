@@ -1,12 +1,25 @@
 # Changelog
 
-Every push to `main` is a release. Before pushing, add a `## [X.Y.Z] - YYYY-MM-DD`
-section at the top with `- ` entries (minor for features, patch for fixes); if an
-`## [Unreleased]` section is waiting, turn it into that section. GitHub tags it
-and publishes the section as the release notes; a push or pull request
-without one is refused (`[no release]` in the tip commit is the only exception).
-Versions follow [Semantic Versioning](https://semver.org/). The full rule:
-[StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
+MyBattery 的版本以 `VERSION` 为准，使用 `mybattery-vX.Y.Z` 标签发布。继承的 `v1.x` 标签与下方原项目记录保留，不复用或覆盖。
+
+## [0.1.0] - 2026-10-07
+
+- 自动读取系统首选语言，提供简体中文与英语；其他语言默认英语，无手动切换开关。
+- 首个 MyBattery 公开版本：顶部显示电量及插电/充电图标，展开查看功率、协议、健康度、循环、容量和风扇。
+- 保留紧凑的 176 pt 只读面板和原生插电边缘光效；加入版本显示，默认图标与电量，保留已有显示选择。
+- 区分电池充放电、整机输入与负载功率；修复负电流、缺数和矛盾采样被误标充电的问题。
+- 正确识别系统的“pd charger”协议字段，显示 PD 握手功率档位；读取 ChargerData 的充电状态。
+- ioreg 缺少电池温度时，通过只读 TB0T 电池传感器回退，支持 Apple Silicon 浮点和 sp78 格式。
+- 修复 SMC 只读命令、浮点字节序、连接退避、整数溢出与嵌套字段越界；避免失败采样触发虚假插电光效。
+- 插电特效采用原生勾选菜单，关闭立即生效，清理结束、屏幕变化、休眠与退出时的窗口；电源监听增加重复启动和资源释放保护。
+- 随仓库附带 StatusItemKit 源码及许可，解决本地汉化依赖无法从上游获取的问题；克隆单个仓库即可构建安装。
+- 首次读数失败或没有电池时显示明确状态，保留设置、版本和退出入口。
+- 增加源码安装、可复跑回归、DMG 安装包与 SHA256，采用独立版本文件和标签触发的 GitHub 构建/发布流程；GitHub 自动附带 ZIP/TAR.GZ 源码归档。
+- 灵感来自 BetterBattery 与 battery-time-menubar，保留原始代码及许可的来源说明。
+
+## 原项目历史
+
+以下为 Battery Time 的原始变更记录，不是 MyBattery 的发布顺序。
 
 ## [1.1.1] - 2026-09-28
 

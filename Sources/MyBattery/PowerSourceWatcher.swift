@@ -15,7 +15,15 @@ public final class PowerSourceWatcher {
 
     public init(onChange: @escaping () -> Void) { self.onChange = onChange }
 
+    deinit { stop() }
+
+    public func stop() {
+        if let source = source { CFRunLoopSourceInvalidate(source) }
+        source = nil
+    }
+
     public func start() {
+        guard source == nil else { return }
         let ctx = Unmanaged.passUnretained(self).toOpaque()
         guard let src = IOPSNotificationCreateRunLoopSource({ context in
             guard let context = context else { return }

@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "BatteryTimeCore", targets: ["BatteryTimeCore"]),
     ],
     dependencies: [
-        .package(path: "../StatusItemKit"),
+        .package(path: "Vendor/StatusItemKit"),
     ],
     targets: [
         .target(name: "BatteryTimeCore"),
@@ -22,5 +22,6 @@ let package = Package(
             dependencies: ["BatteryTimeCore", .product(name: "StatusItemKit", package: "StatusItemKit")]
         ),
         .testTarget(name: "BatteryTimeCoreTests", dependencies: ["BatteryTimeCore"]),
+        .testTarget(name: "MyBatteryTests", dependencies: ["MyBattery"]),
     ]
 )
