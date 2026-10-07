@@ -50,6 +50,8 @@ cd MyBattery
 ./scripts/install.sh
 ```
 
+You can also extract a release source archive and run `./scripts/install.sh` inside it; Git history is not required.
+
 The script builds, signs locally, installs into `~/Applications/MyBattery.app` and launches the app. Use `./scripts/dev-reload.sh` after editing.
 
 ## Development

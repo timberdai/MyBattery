@@ -64,6 +64,8 @@ cd MyBattery
 ./scripts/install.sh
 ```
 
+也可以解压 Release 的源码归档，进入解压目录运行 `./scripts/install.sh`，不需要 Git 历史。
+
 脚本会编译、在本机签名、安装到 `~/Applications/MyBattery.app` 并启动。修改后运行 `./scripts/dev-reload.sh` 即可重新构建安装。
 
 ## 开发与贡献

@@ -21,12 +21,18 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/MyBattery"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/bundle/. "$APP/Contents/Resources/"
-REV="$(git rev-parse --short HEAD)"
-BUILD="$(git rev-list --count HEAD)"
+BUILD=1
 FULL_VERSION="$VERSION"
-if [[ "${MYBATTERY_RELEASE:-0}" != 1 ]]; then
-    FULL_VERSION="$VERSION+g$REV"
-    [[ -z "$(git status --porcelain)" ]] || FULL_VERSION="$FULL_VERSION.dirty"
+if [[ -d .git || -f .git ]]; then
+    REV="$(git rev-parse --short HEAD)"
+    BUILD="$(git rev-list --count HEAD)"
+    if [[ "${MYBATTERY_RELEASE:-0}" != 1 ]]; then
+        FULL_VERSION="$VERSION+g$REV"
+        [[ -z "$(git status --porcelain)" ]] || FULL_VERSION="$FULL_VERSION.dirty"
+    fi
+else
+    # GitHub source archives contain the complete source, without Git metadata.
+    FULL_VERSION="$VERSION+source"
 fi
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
