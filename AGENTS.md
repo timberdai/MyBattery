@@ -1,7 +1,7 @@
-# AGENTS.md — MyBattery 智能体接手指南与上下文知识库
+# AGENTS.md — MyBattery 智能体接手指南与核心知识库
 
-> 欢迎来到 **MyBattery** 项目。本文档专为 AI 编码助手（Antigravity、Claude Code、Cursor、Codex 等）及协作者编写。
-> 请在接手任何开发任务前完整阅读本文档，以确保理解项目背景、用户核心诉求、设计决策与开发工作流。
+> 欢迎来到 **MyBattery** 项目。本文档专为接手本项目的 AI 编码助手（Codex、Claude Code、Antigravity 等）及协作者编写。
+> **在执行任何代码修改、重构或功能演进前，必须完整阅读并严格遵守本文档所列出的核心红线与设计准则。**
 
 ---
 
@@ -10,106 +10,109 @@
 * **项目名称**：MyBattery
 * **仓库地址**：`https://github.com/timberdai/MyBattery`
 * **主分支**：`main`
-* **当前版本**：`v0.1.0`
+* **当前版本**：`0.1.0`（MyBattery 独立版本）
 * **作者**：timberdai (`timberdai@outlook.com`)
-* **致敬与灵感**：
-  * 底层架构灵感源自：[nicholaspsmith/battery-time-menubar](https://github.com/nicholaspsmith/battery-time-menubar)
-  * 现代美学与交互参考：[BetterBattery](https://github.com/michaelmax98/BetterBattery) 与 [CodexBar](https://github.com/steipete/CodexBar)
+* **技术栈**：Swift 5.9+ / macOS 13.0+ / AppKit / IOKit / CoreGraphics / SMC (随附 `Vendor/StatusItemKit`，无外部网络 SPM 包)
 
 ---
 
-## 2. 用户核心画像与产品哲学 (User Persona & Product Principles)
+## 2. 用户绝对红线与产品设计铁律 (Strict Red Lines)
 
-在为此项目编写代码或提出方案时，**必须严格遵守以下用户准则**：
+在为此项目编写或审查代码时，**必须无条件遵循以下不可触碰的红线**：
 
-1. **核心使用场景**：
-   * 用户为 Apple Silicon (M系列) 笔记本重度用户；
-   * **常年外接供电使用，并在系统设置中常年开启“80% 充电上限”**；
-   * 极度关注：外接线是否插好、当前是充电还是旁路供电、真实输入瓦数是多少、当前是否为 USB-PD 高功率握手。
-2. **审美与品味准则（遵循 Emil Kowalski 与 Apple 原生设计哲学）**：
-   * **拒绝低质粗糙**：必须像素级对齐，拒绝发灰、截断、白边或文字重叠；
-   * **拒绝花哨无用功能**：用户**坚决不喜欢表情功能（Emoji / Memoji）**等花哨冗余特性；
-   * **信息层次分明**：遵循《Refactoring UI》规则，主数值加粗饱和、次级键淡灰雅致，善用微型胶囊轨道与徽章；
-   * **纯信息展示与辅助控制**：定位为纯粹、高质感的电能信息面板，不强行做侵入式系统改写。
-
----
-
-## 3. 极速开发与热重载工作流 (Workflow & Tooling)
-
-* **严禁全量重构或冗余操作**：本项目已内置极速增量热重载脚本：
-  ```bash
-  ./scripts/dev-reload.sh
-  ```
-  该脚本会在 `<2s` 内完成：
-  1. `swift build -c release`（增量编译）
-  2. 拷贝二进制到 `~/Applications/MyBattery.app` 并进行 ad-hoc 签名
-  3. 平滑重启后台进程 `MyBattery`
-* **开发调试流程**：修改代码 ➔ 执行 `./scripts/dev-reload.sh` ➔ 用户点击状态栏立即看到真实效果。
+1. 🛑 **严禁撑宽面板（面板宽度严格保持在 ~176 pt 左右）**：
+   * 用户极其喜爱当前精致紧凑的超窄面板；
+   * 所有文本、标签、行视图的宽度必须在 176 pt 限制内完美布局，严禁出现由于文本过长导致的横向被撑宽、换行错位或右侧截断。
+2. 🛑 **纯展示数据行绝不允许鼠标 Hover 蓝色高亮**：
+   * 所有电池数据行（电量、供电状态、功率、时间、健康、循环、容量、温度、风扇等，包括冷启动占位行）必须使用 `ReadOnlyRowView` 纯自绘；
+   * 严禁直接使用原生 `NSMenuItem(title: ...)` 承载数据行，鼠标滑过绝不能变成可点击选中的蓝色长条。
+3. 🛑 **彻底杜绝电压（`V`）参数展示**：
+   * 严禁在 UI 界面出现 `12.4 V`、`20.0 V / 4.5 A` 等电压相关字段，用户只关心瓦数（`W`）、电量（`%` / `mAh`）与温度（`°C`）。
+4. 🛑 **严禁加入大卡片、拓扑图、折叠栏或表情**：
+   * 用户坚决反对臃肿的花哨功能（如大圆环进度条、三端电能拓扑图、Emoji 表情卡片、折叠二级菜单等）；
+   * 保持纯粹、扁平、一目了然的原生 macOS 菜单设计。
+5. 🛑 **其他未提及部分严禁擅自改动**：
+   * 状态栏微型电池图标绘制、登录启动逻辑、系统设置跳转、退出等既有功能保持原有逻辑，改动需最小化与高内聚。
 
 ---
 
-## 4. 关键架构与核心技术决策 (Architecture & ADRs)
+## 3. 关键架构与核心技术决策 (Architecture & ADRs)
 
-### 4.1 80% 旁路供电硬件级识别 (Bypass Power Detection)
-* **技术难点**：插着外接供电且停在 80% 时，macOS 会激活旁路供电，此时电池既不充电也不放电（电流为 0）。普通工具常误判为“未插电”或“充满电”。
-* **解决方案**：
-  * 读取 `AppleSmartBattery` 的 `NotChargingReason == 16777216` 且 `ExternalConnected == Yes`；
-  * 或判定 `reading.plugged && !isCharging && percent == 80`；
-  * 状态栏图标与详情面板统一标注：`外接电源 · 旁路供电 (80%上限保护)`。
+### 3.1 官方权威电池健康度校准 (Official Battery Health Alignment)
+* **原理**：此前通过瞬时物理容量计算 `rawMax * 100 / design` 时，因电芯物理读数微小波动会导致 `99%` 的显示偏差；
+* **决策**：优先读取 `IORegBattery.officialMaxCapacity`（来自底层 BMS 权威校验键值 `"MaxCapacity"`，限制在 1...100% 合理区间），采用系统提供的健康百分比；获取不到或异常时降级回退到容量除法，不预测剩余寿命。
 
-### 4.2 功率测量：整机输入功率 vs 放电功耗 (Active Power)
-* **决策原因**：标称电压（如 `12.37 V`）对用户无实际意义，电池端电流在旁路时显示 `0.0 W` 容易引起误解。
-* **数据来源**：
-  * **插电时**：读取 `PowerTelemetryData.SystemPowerIn`（毫瓦转换得到瓦特），展示适配器输入给 Mac 整机的真实功率（例如 `16.4 W`）；
-  * **拔电时**：计算 `instantAmperageRaw * voltageMV`，展示电池整机放电功耗（例如 `8.5 W`）。
+### 3.2 80% 充电保护与旁路供电识别 (Bypass Power Detection)
+* **原理**：在常年插电且保持 80% 限制时，macOS 启用硬件旁路供电（电池电流归零）；
+* **识别依据**：`NotChargingReason == 16777216` 或 `plugged && !isCharging && percent == 80`；
+* **展示**：明确显示为 `外接供电 (旁路)`，实时功率展示真实整机输入功率（`SystemPowerIn`），杜绝硬编码 0.0 W。
 
-### 4.3 状态栏图标黄金比例与镂空渲染 (BatteryGlyph)
-* **尺寸规范**：外壳 `21.0 × 11.5 pt`，右侧带微型小三角极耳；
-* **内部图标**：饱满圆头大插头（`6.6 × 4.9 pt`）或高能闪电；
-* **物理镂空**：采用 `CGBlendMode.clear` 物理打孔（1.2pt 呼吸间距），无论在浅色、深色还是动态壁纸下均可完美透出桌面背景，具备极致通透感。
+### 3.3 免 root 硬件温度与散热风扇 (SMCFansReader)
+* **实现**：`SMCFansReader.swift` 通过 IOKit 与 `AppleSMC` 建立用户态连接；
+* **风扇**：只使用查询键信息 `9` 与读取字节 `5`，拒绝写命令；校验 `FNum` 的 `ui8 ` 类型/长度与 0...10 个十进制键边界，通过 `fpe2` 大端定点 / `flt ` 小端浮点准确解码；读取在后台轮询，菜单使用缓存。转速小于 50 RPM 时展示为 `停转 (静音)`；若机型无风扇（如 MacBook Air）则整行自适应隐藏；
+* **温度**：优先从 ioreg 的 BatteryData/顶层 Temperature 读取，缺数时只读 SMC 电池传感器 TB0T（flt 小端或 sp78 大端），显示 `电池温度: XX.X °C`；缺传感器隐藏，不用其他硬件温度冒充。
 
-### 4.4 CodexBar 风格 Header 卡片 (BatteryMenuCardView)
-* **实现机制**：纯 AppKit 自绘制 `NSView` 嵌入 `NSMenuItem`，重写 `allowsVibrancy = true`，完美融入系统毛玻璃菜单；
-* **内容包含**：大号电量粗体数字、状态胶囊徽章、**微型电量胶囊进度条（在 80% 处刻画了物理刻度标记线）**与实时功率副标。
+### 3.4 纯原生插电呼吸光晕特效 (PlugInGlowController)
+* **动效机制**：电源从断开变为连接瞬间，在所有屏幕四周边缘弹出无边框、无阴影、穿透鼠标事件的浮动全屏窗口（`level = .screenSaver`）；
+* **纯原生渲染**：采用 CoreGraphics 绘制多重半透明发光圆角矩形，CoreAnimation 淡入淡出，零外部宏依赖，动效完成后彻底销毁窗口；
+* **勾选开关与主线程隔离**：在菜单面板设置区域提供与“登录时启动”一致的原生勾选项 `插电特效`（英文 Plug-in Glow），勾选代表启用，取消勾选立即取消正在播放的光效，启用时预览一次，访问 shared、初始化、开关与触发必须在主线程，关闭同步清理；析构若发生在后台，则把保留的窗口交给主线程关闭。监听屏幕参数变化、应用退出及 NSWorkspace 休眠通知，清理当前窗口。
 
 ---
 
-## 5. 项目模块代码结构地图 (Code Map)
+## 4. 模块文件代码地图 (Codebase Map)
 
 ```text
 MyBattery/
-├── Package.swift                             # Swift Package 清单，产物为 MyBattery
+├── Package.swift                             # SPM 清单 (依赖 Vendor/StatusItemKit, 模块 BatteryTimeCore)
+├── Vendor/StatusItemKit/                    # 随附只读库源码、来源与 MPL-2.0
 ├── Sources/
 │   ├── MyBattery/
-│   │   ├── main.swift                        # 应用入口、菜单构建逻辑与轮询状态管理
-│   │   ├── BatteryMenuCardView.swift         # 顶部 CodexBar 风格微型卡片与胶囊进度条
-│   │   ├── BatteryGlyph.swift                # 状态栏图标 CoreGraphics 高清渲染器
-│   │   ├── DisplayPrefs.swift                # 显示偏好设置 (图标/百分比/时间)
-│   │   └── PowerSourceWatcher.swift          # 电源插拔与硬件状态变更监听
+│   │   ├── main.swift                        # 应用入口、NSMenu 组装、轮询与 UI 控件
+│   │   ├── PlugInGlowController.swift        # 插电全屏边缘呼吸霓虹光效控制器
+│   │   ├── SMCFansReader.swift               # 免 root AppleSMC 风扇转速读取器
+│   │   ├── BatteryGlyph.swift                # 状态栏胶囊图标 CoreGraphics 渲染
+│   │   ├── DisplayPrefs.swift                # UserDefaults 显示偏好配置
+│   │   └── PowerSourceWatcher.swift          # IOKit 电源插拔事件监听
 │   └── BatteryTimeCore/
-│       ├── IORegBattery.swift                # IOKit 硬件遥测解析器 (含 SystemPowerIn)
-│       ├── BatteryMath.swift                 # 电池安培、电压、健康度数学计算
-│       └── Usage24h.swift                    # 24小时电池与供电使用时长统计
+│       ├── IORegBattery.swift                # ioreg 属性解析器 (MaxCapacity / SystemPowerIn)
+│       ├── BatteryMath.swift                 # 电池时间、百分比与单位换算
+│       └── Usage24h.swift                    # 24小时使用统计日志解析
 ├── scripts/
-│   └── dev-reload.sh                         # <2s 极速增量热重载脚本
+│   ├── build-app.sh                          # 生产包打包脚本
+│   └── dev-reload.sh                         # 本地增量编译、签名与热重载脚本
+├── Resources/
+│   ├── Info.plist                            # 应用属性清单
+│   └── bundle/AppIcon.icns                   # 应用图标
 ├── docs/
-│   ├── ARCHITECTURE.md                       # 系统架构图与数据流
-│   └── DECISIONS.md                          # 历史讨论与决策备忘录
-├── legacy/                                   # 原作者旧版独立脚本归档
-└── README.md                                 # 面向用户的项目主页说明文档
+│   └── DECISIONS.md                          # 架构决策备忘录 (含已替代废弃记录)
+├── README.md                                 # 用户主页说明文档
+├── AGENTS.md                                 # 智能体开发规范与红线 (本文档)
+└── HANDOFF.md                                # 详细交接与安全审查清单
 ```
 
 ---
 
-## 6. 待推进路线图 (Next Roadmap)
+## 5. 开发调试与构建验证命令 (Workflow & Verification)
 
-根据对 [BetterBattery](https://github.com/michaelmax98/BetterBattery) 与 [BatteryBar](https://github.com/isolson/BatteryBar) 的竞品研究，后续建议迭代优先级如下：
+```bash
+# 1. 增量热重载部署测试（推荐）
+./scripts/dev-reload.sh
 
-1. **三端电能流向示意图 (Power Flow Diagram)**：
-   * 在卡片中展示 `[⚡️ 适配器 16.4W] ➔ [🔋 0.0W 旁路闲置] ➔ [💻 主机 16.4W]`；
-2. **电池温度微型冷暖胶囊 (Temperature Gauge)**：
-   * 展示实时电池温度（如 `32.5 °C`）并附带蓝-绿-橙-红冷暖指示轨；
-3. **容量衰减对比条 (Capacity Degradation Bar)**：
-   * 将当前容量（4831 mAh）、全负荷容量（6294 mAh）与出厂设计容量（6249 mAh）用条形图对比展示；
-4. **显著耗电应用侦测 (Using Significant Energy)**：
-   * 仅在拔掉电源放电时激活：后台轻量采样耗电最大的 2~3 个应用（如 `Chrome`、`Claude` 等）。
+# 2. 纯编译检查
+swift build -c release
+
+# 3. 运行中进程检查
+pgrep -l MyBattery
+```
+
+## 6. 产品与发布约定（2026-10-07）
+
+用户定位：自己每天用、其他人能在 GitHub 下载或编译来玩的电池小工具。重点是日常状态、功率、协议准确和易安装；不扩展成充电管理器，不改 Apple 原生优化充电或上限。保留必要错误保护和验证，如实记录工具链/真实界面的未测项；这些环境限制不自动成为个人使用版的发布阻塞。
+
+版本以 VERSION 为单一来源。MyBattery 首个公开版本=0.1.0，独立标签 mybattery-v0.1.0；保留上游 v1.0.0/v1.1.1 等历史标签。已用本项目 workflow 取代原来的每次 main 推送自动发布规则：main/PR 做检查，产品标签且版本匹配才发布。scripts/build-app.sh 自行打包和签名，正式发布模式要求干净且处在精确产品标签；同级 StatusItemKit 不作修改。
+
+2026-10-07 用户已明确授权本轮提交、推送到 timberdai/MyBattery 并发布 v0.1.0（DMG 与 GitHub 自动源码归档）。后续发布仍按各次授权处理。README面向用户，审计过程只放交接/验收文件，不塞进产品功能介绍。
+
+## 7. 自动语言规则（2026-10-07）
+
+系统 Locale.preferredLanguages 第一项为 zh/zh-Hans/zh-Hant/zh-CN 等中文标识时显示简体中文；英文、其他语言、无值均显示英语。只判断第一项，不因次选中文把其他语言用户切成中文。启动时确定语言，不添加语言切换菜单或保存语言偏好。所有可见菜单、动态 formatter、版本与登录失败提示都遵守同一规则；英文继续满足176pt，不缩小字体或裁切。随附库的语言提示允许在本仓库内适配，不改同级库。

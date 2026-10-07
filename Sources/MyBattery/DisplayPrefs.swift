@@ -8,7 +8,7 @@ import Foundation
 
 /// UserDefaults-backed menu-bar display preferences, replacing the plugin's
 /// `set-display.sh` / `set-tempunit.sh` flag files. Defaults mirror the plugin:
-/// icon on, percentage off, time on, temperature in °C.
+/// icon and percentage on, time off, temperature in °C.
 enum DisplayPrefs {
     private static let defaults = UserDefaults.standard
 
@@ -28,11 +28,11 @@ enum DisplayPrefs {
         set { defaults.set(newValue, forKey: kShowIcon) }
     }
     static var showPct: Bool {
-        get { boolOr(kShowPct, false) }
+        get { boolOr(kShowPct, true) }
         set { defaults.set(newValue, forKey: kShowPct) }
     }
     static var showTime: Bool {
-        get { boolOr(kShowTime, true) }
+        get { boolOr(kShowTime, false) }
         set { defaults.set(newValue, forKey: kShowTime) }
     }
 
