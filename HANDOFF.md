@@ -6,7 +6,7 @@
 
 公开版本标题v0.1.0，使用mybattery-v0.1.0标签；保留旧v0.1.0及v1.x历史标签。VERSION是版本来源。Release提供arm64 DMG，GitHub自动提供ZIP和TAR.GZ源码。README/README.en.md包含用户安装和开发说明，About指向最新Release。
 
-发布流程：主分支/PR执行完整XCTest和构建；通过后推送产品标签，由workflow生成DMG、检验并发布。正式打包要求干净工作区、标签版本一致。原本机CLT缺XCTest的限制如实保留，不能把辅助入口当全套测试；远程完整Xcode检查结果以GitHub Actions为准。桌面光效测试需显式启用，不在无桌面CI中强制播放。
+发布流程：主分支/PR执行完整XCTest和构建；通过后推送产品标签，由workflow生成DMG、检验并发布。正式打包要求干净工作区、标签版本一致。本机CLT仍缺XCTest；GitHub完整Xcode环境已执行全部非桌面XCTest并通过，补齐了此前完整测试未运行的证据。检查见 https://github.com/timberdai/MyBattery/actions/runs/37577564996 。不能把辅助入口当全套测试。桌面光效测试需显式启用，不在无桌面CI中强制播放。
 
 此前本机350条辅助回归（含153个中英文宽度样例）和19条两屏光效生命周期断言通过；真实菜单鼠标交互未自动完整验收。用户已反馈真实菜单截图，并要求特效改为勾选项，现已应用。菜单功率与档位不是同一类实时数据，详细说明见README。
 
