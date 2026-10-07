@@ -57,4 +57,9 @@ jobs:
           printf '\n## Download / 下载\n\nApple Silicon · macOS 13+\n\nOpen the DMG and drag MyBattery.app to Applications.\n打开 DMG，将 MyBattery.app 拖入 Applications。\n\nSource code (zip) and Source code (tar.gz) are provided automatically by GitHub.\n\n## SHA256\n\n```text\n' >> release-notes.md
           cat artifacts/*.sha256 >> release-notes.md
           printf '```\n' >> release-notes.md
-          gh release create "$GITHUB_REF_NAME" artifacts/*.dmg --verify-tag --title "v$VERSION" --notes-file release-notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" artifacts/*.dmg --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "v$VERSION" --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" artifacts/*.dmg --verify-tag --title "v$VERSION" --notes-file release-notes.md
+          fi
