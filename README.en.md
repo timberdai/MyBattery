@@ -1,5 +1,7 @@
 # MyBattery
 
+<img src="docs/app-icon.png" alt="MyBattery app icon: a mint battery and lightning bolt on graphite" width="128" height="128">
+
 **A small macOS menu bar app for battery status, charging power and everyday battery information.**
 
 [Download](https://github.com/timberdai/MyBattery/releases/latest) · [简体中文](README.md) · [Report an issue](https://github.com/timberdai/MyBattery/issues)
@@ -67,6 +69,11 @@ Full XCTest requires Xcode with the test framework. The last command directly te
 Issues and pull requests are welcome. Include your macOS version, Mac model, app version and steps to reproduce. Remove device serial numbers from reports.
 
 `VERSION` defines the version, currently **0.1.0**. `./scripts/package-release.sh` creates a DMG and checksum under `build/`. Main/PR builds run checks; matching `mybattery-vX.Y.Z` tags publish releases. The first public release is titled `v0.1.0`, using `mybattery-v0.1.0` to preserve existing historical tags.
+
+## Project collaboration
+
+- **Author and maintainer**: [timberdai](https://github.com/timberdai).
+- **AI assistance tools**: OpenAI Codex (GPT), Google Antigravity (Gemini).
 
 ## Inspiration and credits
 

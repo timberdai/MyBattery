@@ -1,5 +1,7 @@
 # MyBattery
 
+<img src="docs/app-icon.png" alt="MyBattery 应用图标：深石墨底色、薄荷绿电池与闪电" width="128" height="128">
+
 [![Release](https://img.shields.io/github/v/release/timberdai/MyBattery)](https://github.com/timberdai/MyBattery/releases/latest)
 [![Build](https://github.com/timberdai/MyBattery/actions/workflows/release.yml/badge.svg)](https://github.com/timberdai/MyBattery/actions/workflows/release.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](LICENSE)
@@ -85,6 +87,11 @@ swift test
 `VERSION` 是版本来源，当前为 **0.1.0**。运行 `./scripts/package-release.sh` 会在 `build/` 生成当前架构的 DMG 和校验文件。
 
 主分支和 PR 执行测试与构建；推送匹配的 `mybattery-vX.Y.Z` 标签才发布。首个公开版本使用 `mybattery-v0.1.0`，Release 标题为 `v0.1.0`。原仓库已有的 `v0.1.0` 及 `v1.x` 历史标签保留。
+
+## 项目协作
+
+- **作者与维护者**：[timberdai](https://github.com/timberdai)。
+- **AI 辅助工具**：OpenAI Codex（GPT）、Google Antigravity（Gemini）。
 
 ## 灵感与致谢
 
