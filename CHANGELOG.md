@@ -6,6 +6,7 @@ MyBattery 的版本以 `VERSION` 为准，使用 `mybattery-vX.Y.Z` 标签发布
 
 - 替换应用图标为深石墨底色、薄荷绿胶囊电池与留白闪电；保留菜单栏实时电池图标。
 - 中英文 README 展示新图标，并列出维护者与 Codex（GPT）、Google Antigravity（Gemini）辅助工具。
+- 补充 Codex 与 Gemini 的 GitHub 贡献署名。
 
 ## [0.1.0] - 2026-10-07
 

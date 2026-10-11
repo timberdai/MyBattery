@@ -73,7 +73,7 @@ Issues and pull requests are welcome. Include your macOS version, Mac model, app
 ## Project collaboration
 
 - **Author and maintainer**: [timberdai](https://github.com/timberdai).
-- **AI assistance tools**: OpenAI Codex (GPT), Google Antigravity (Gemini).
+- **AI assistance tools**: [OpenAI Codex (GPT)](https://github.com/codex), Google Antigravity (Gemini). Gemini's GitHub contribution credit uses the [Gemini Code Assist bot](https://github.com/apps/gemini-code-assist).
 
 ## Inspiration and credits
 

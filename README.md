@@ -91,7 +91,7 @@ swift test
 ## 项目协作
 
 - **作者与维护者**：[timberdai](https://github.com/timberdai)。
-- **AI 辅助工具**：OpenAI Codex（GPT）、Google Antigravity（Gemini）。
+- **AI 辅助工具**：[OpenAI Codex（GPT）](https://github.com/codex)、Google Antigravity（Gemini）。Gemini 的 GitHub 贡献署名使用 [Gemini Code Assist 机器人](https://github.com/apps/gemini-code-assist)。
 
 ## 灵感与致谢
 
